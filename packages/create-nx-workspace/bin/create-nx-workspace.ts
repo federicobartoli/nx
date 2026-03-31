@@ -97,7 +97,7 @@ type AngularUnitTestRunner =
 interface BaseArguments extends CreateWorkspaceOptions {
   preset?: Preset;
   linter?: Linter;
-  formatter?: 'none' | 'prettier';
+  formatter?: 'none' | 'prettier' | 'oxfmt';
   workspaces?: boolean;
   useProjectJson?: boolean;
 }
@@ -1137,32 +1137,37 @@ async function determineWebOptions(
   return { linter: await determineLinterOptions(parsedArgs) };
 }
 
-async function determineFormatterOptions(
-  args: {
-    formatter?: 'none' | 'prettier';
-    interactive?: boolean;
-  },
-  opts?: { preferPrettier?: boolean }
-) {
+async function determineFormatterOptions(args: {
+  formatter?: 'none' | 'prettier' | 'oxfmt';
+  interactive?: boolean;
+}) {
   if (args.formatter) return args.formatter;
-  const reply = await enquirer.prompt<{ prettier: 'Yes' | 'No' }>([
+  const reply = await enquirer.prompt<{
+    formatter: 'oxfmt' | 'prettier' | 'none';
+  }>([
     {
-      name: 'prettier',
-      message: `Would you like to use Prettier for code formatting?`,
+      name: 'formatter',
+      message: `Which code formatter would you like to use?`,
       type: 'autocomplete',
       choices: [
         {
-          name: 'Yes',
+          name: 'oxfmt',
+          message: 'oxfmt             [ https://oxc.rs  ]',
         },
         {
-          name: 'No',
+          name: 'prettier',
+          message: 'prettier          [ https://prettier.io  ]',
+        },
+        {
+          name: 'none',
+          message: 'none',
         },
       ],
-      initial: opts?.preferPrettier ? 0 : 1,
+      initial: 0,
       skip: !args.interactive || isCI(),
     },
   ]);
-  return reply.prettier === 'Yes' ? 'prettier' : 'none';
+  return reply.formatter;
 }
 
 async function determineNoneOptions(
@@ -1201,7 +1206,7 @@ async function determineNoneOptions(
     }
 
     if (preset === Preset.TS) {
-      return { preset, formatter: 'prettier' };
+      return { preset, formatter: 'oxfmt' };
     }
 
     if (parsedArgs.js !== undefined) {
@@ -1257,7 +1262,7 @@ async function determineReactOptions(
   let nextAppDir = false;
   let nextSrcDir = false;
   let linter: undefined | Linter;
-  let formatter: undefined | 'none' | 'prettier';
+  let formatter: undefined | 'none' | 'prettier' | 'oxfmt';
 
   const workspaces = parsedArgs.workspaces;
 
@@ -1381,11 +1386,9 @@ async function determineReactOptions(
     e2eTestRunner = await determineE2eTestRunner(parsedArgs);
   }
   if (workspaces) {
-    formatter = await determineFormatterOptions(parsedArgs, {
-      preferPrettier: true,
-    });
+    formatter = await determineFormatterOptions(parsedArgs);
   } else {
-    formatter = 'prettier';
+    formatter = 'oxfmt';
   }
 
   return {
@@ -1414,7 +1417,7 @@ async function determineVueOptions(
   let unitTestRunner: undefined | 'none' | 'vitest' = undefined;
   let e2eTestRunner: undefined | 'none' | 'cypress' | 'playwright' = undefined;
   let linter: undefined | Linter;
-  let formatter: undefined | 'none' | 'prettier';
+  let formatter: undefined | 'none' | 'prettier' | 'oxfmt';
 
   const workspaces = parsedArgs.workspaces;
 
@@ -1493,11 +1496,9 @@ async function determineVueOptions(
   });
   e2eTestRunner = await determineE2eTestRunner(parsedArgs);
   if (workspaces) {
-    formatter = await determineFormatterOptions(parsedArgs, {
-      preferPrettier: true,
-    });
+    formatter = await determineFormatterOptions(parsedArgs);
   } else {
-    formatter = 'prettier';
+    formatter = 'oxfmt';
   }
 
   return {
@@ -1522,11 +1523,13 @@ async function determineAngularOptions(
   let e2eTestRunner: undefined | 'none' | 'cypress' | 'playwright' = undefined;
   let bundler: undefined | 'webpack' | 'rspack' | 'esbuild' = undefined;
   let ssr: undefined | boolean = undefined;
+  let formatter: undefined | 'none' | 'prettier' | 'oxfmt';
 
   const standaloneApi = parsedArgs.standaloneApi;
   const routing = parsedArgs.routing;
   const prefix = parsedArgs.prefix;
   const zoneless = parsedArgs.zoneless;
+  const workspaces = parsedArgs.workspaces;
 
   if (prefix) {
     // https://github.com/angular/angular-cli/blob/main/packages/schematics/angular/utility/validation.ts#L11-L14
@@ -1699,6 +1702,12 @@ async function determineAngularOptions(
 
   e2eTestRunner = await determineE2eTestRunner(parsedArgs);
 
+  if (workspaces) {
+    formatter = await determineFormatterOptions(parsedArgs);
+  } else {
+    formatter = 'oxfmt';
+  }
+
   return {
     preset,
     style,
@@ -1712,6 +1721,8 @@ async function determineAngularOptions(
     prefix,
     zoneless,
     linter,
+    formatter,
+    workspaces,
   };
 }
 
@@ -1723,7 +1734,7 @@ async function determineNodeOptions(
   let framework: 'express' | 'fastify' | 'koa' | 'nest' | 'none';
   let docker: boolean;
   let linter: undefined | Linter;
-  let formatter: undefined | 'none' | 'prettier';
+  let formatter: undefined | 'none' | 'prettier' | 'oxfmt';
   let unitTestRunner: undefined | 'none' | 'jest' = undefined;
   const workspaces = parsedArgs.workspaces;
 
@@ -1792,11 +1803,9 @@ async function determineNodeOptions(
     exclude: 'vitest',
   });
   if (workspaces) {
-    formatter = await determineFormatterOptions(parsedArgs, {
-      preferPrettier: true,
-    });
+    formatter = await determineFormatterOptions(parsedArgs);
   } else {
-    formatter = 'prettier';
+    formatter = 'oxfmt';
   }
 
   return {
@@ -1861,7 +1870,7 @@ async function determineStandaloneOrMonorepo(): Promise<
       type: 'autocomplete',
       name: 'workspaceType',
       message: `Integrated monorepo, or standalone project?`,
-      initial: 1,
+      initial: 0,
       choices: [
         {
           name: 'integrated',
