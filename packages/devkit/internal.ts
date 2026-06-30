@@ -251,6 +251,7 @@ export {
   setupAiAgentsGenerator,
   setupWorkspaceContext,
   shouldStreamOutput,
+  stripPrunedLockfilePnpmConfig,
   toNewFormat,
   toOldFormat,
   transformLegacyOutputs,
