@@ -259,6 +259,7 @@ export {
   validateOutputs,
   workspaceDataDirectory,
   workspaceRootInner,
+  writePrunedPnpmInstallSettings,
 } from 'nx/src/devkit-internals';
 
 // Release runtime values (releasePublish, releaseVersion, VersionActions) are
