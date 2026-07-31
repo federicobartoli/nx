@@ -222,8 +222,8 @@ describe('app', () => {
           "name",
           "version",
           "private",
-          "nx",
           "dependencies",
+          "nx",
         ]
       `);
       expect(readJson(appTree, 'myapp/package.json')).toMatchInlineSnapshot(`
