@@ -185,6 +185,7 @@ export {
   getCliPath,
   getCustomHasher,
   getDependencyConfigs,
+  getEnvPathsForTask,
   getExecutorForTask,
   getExecutorInformation,
   getExecutorNameForTask,
