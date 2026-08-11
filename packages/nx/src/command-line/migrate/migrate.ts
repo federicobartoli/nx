@@ -867,7 +867,7 @@ export class Migrator {
   private addPackageUpdate(name: string, packageUpdate: PackageUpdate): void {
     if (
       !this.packageUpdates[name] ||
-      this.gt(packageUpdate.version, this.packageUpdates[name].version)
+      !this.lt(packageUpdate.version, this.packageUpdates[name].version)
     ) {
       this.packageUpdates[name] = packageUpdate;
     }
