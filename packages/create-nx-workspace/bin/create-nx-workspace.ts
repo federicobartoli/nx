@@ -1171,14 +1171,17 @@ async function determineFormatterOptions(args: {
       name: 'formatter',
       message: `Which code formatter would you like to use?`,
       type: 'autocomplete',
+      // A skipped prompt resolves to the first choice and ignores `initial`, so
+      // the order here is what makes prettier the non-interactive default while
+      // oxfmt is pre-1.0. Reorder the choices to change it.
       choices: [
-        {
-          name: 'oxfmt',
-          message: 'oxfmt             [ https://oxc.rs  ]',
-        },
         {
           name: 'prettier',
           message: 'prettier          [ https://prettier.io  ]',
+        },
+        {
+          name: 'oxfmt',
+          message: 'oxfmt (experimental) [ https://oxc.rs  ]',
         },
         {
           name: 'none',
@@ -1228,7 +1231,7 @@ async function determineNoneOptions(
     }
 
     if (preset === Preset.TS) {
-      return { preset, formatter: parsedArgs.formatter ?? 'oxfmt' };
+      return { preset, formatter: parsedArgs.formatter ?? 'prettier' };
     }
 
     if (parsedArgs.js !== undefined) {
@@ -1410,7 +1413,7 @@ async function determineReactOptions(
   if (workspaces) {
     formatter = await determineFormatterOptions(parsedArgs);
   } else {
-    formatter = parsedArgs.formatter ?? 'oxfmt';
+    formatter = parsedArgs.formatter ?? 'prettier';
   }
 
   return {
@@ -1520,7 +1523,7 @@ async function determineVueOptions(
   if (workspaces) {
     formatter = await determineFormatterOptions(parsedArgs);
   } else {
-    formatter = parsedArgs.formatter ?? 'oxfmt';
+    formatter = parsedArgs.formatter ?? 'prettier';
   }
 
   return {
@@ -1727,7 +1730,7 @@ async function determineAngularOptions(
   if (workspaces) {
     formatter = await determineFormatterOptions(parsedArgs);
   } else {
-    formatter = parsedArgs.formatter ?? 'oxfmt';
+    formatter = parsedArgs.formatter ?? 'prettier';
   }
 
   return {
@@ -1827,7 +1830,7 @@ async function determineNodeOptions(
   if (workspaces) {
     formatter = await determineFormatterOptions(parsedArgs);
   } else {
-    formatter = parsedArgs.formatter ?? 'oxfmt';
+    formatter = parsedArgs.formatter ?? 'prettier';
   }
 
   return {
