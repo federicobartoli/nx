@@ -1179,7 +1179,9 @@ async function determineNoneOptions(
     }
 
     if (preset === Preset.TS) {
-      return { preset, formatter: parsedArgs.formatter ?? 'prettier' };
+      // Asked here too: the workspaces variant above already prompts, and this
+      // preset reaches `@nx/js:init`, which sets the formatter up either way.
+      return { preset, formatter: await determineFormatterOptions(parsedArgs) };
     }
 
     if (parsedArgs.js !== undefined) {
@@ -1375,11 +1377,10 @@ async function determineReactOptions(
     });
     e2eTestRunner = await determineE2eTestRunner(parsedArgs);
   }
-  if (workspaces) {
-    formatter = await determineFormatterOptions(parsedArgs);
-  } else {
-    formatter = parsedArgs.formatter ?? 'prettier';
-  }
+  // Asked outside the gate, like the linter above: which formatter you want is
+  // independent of package-manager workspaces, and `--no-workspaces` used to
+  // force prettier without asking.
+  formatter = await determineFormatterOptions(parsedArgs);
 
   return {
     preset,
@@ -1485,11 +1486,10 @@ async function determineVueOptions(
     exclude: 'jest',
   });
   e2eTestRunner = await determineE2eTestRunner(parsedArgs);
-  if (workspaces) {
-    formatter = await determineFormatterOptions(parsedArgs);
-  } else {
-    formatter = parsedArgs.formatter ?? 'prettier';
-  }
+  // Asked outside the gate, like the linter above: which formatter you want is
+  // independent of package-manager workspaces, and `--no-workspaces` used to
+  // force prettier without asking.
+  formatter = await determineFormatterOptions(parsedArgs);
 
   return {
     preset,
@@ -1692,11 +1692,10 @@ async function determineAngularOptions(
 
   e2eTestRunner = await determineE2eTestRunner(parsedArgs);
 
-  if (workspaces) {
-    formatter = await determineFormatterOptions(parsedArgs);
-  } else {
-    formatter = parsedArgs.formatter ?? 'prettier';
-  }
+  // Asked outside the gate, like the linter above: which formatter you want is
+  // independent of package-manager workspaces, and `--no-workspaces` used to
+  // force prettier without asking.
+  formatter = await determineFormatterOptions(parsedArgs);
 
   return {
     preset,
@@ -1792,11 +1791,10 @@ async function determineNodeOptions(
   unitTestRunner = await determineUnitTestRunner(parsedArgs, {
     exclude: 'vitest',
   });
-  if (workspaces) {
-    formatter = await determineFormatterOptions(parsedArgs);
-  } else {
-    formatter = parsedArgs.formatter ?? 'prettier';
-  }
+  // Asked outside the gate, like the linter above: which formatter you want is
+  // independent of package-manager workspaces, and `--no-workspaces` used to
+  // force prettier without asking.
+  formatter = await determineFormatterOptions(parsedArgs);
 
   return {
     preset,
