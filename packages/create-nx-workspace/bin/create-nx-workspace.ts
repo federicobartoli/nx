@@ -1215,6 +1215,13 @@ async function determineNoneOptions(
         ? await determineLinterOptions(parsedArgs)
         : undefined;
 
+    // Same rule for the formatter: `ts-standalone` is also the only preset here
+    // that generates source, and `@nx/js:library` no longer defaults one for it.
+    const formatter =
+      preset === Preset.TsStandalone
+        ? await determineFormatterOptions(parsedArgs)
+        : parsedArgs.formatter;
+
     // Both keys are omitted rather than set to `undefined`: the caller
     // `Object.assign`s this over `argv`, so an explicit key would clobber the
     // user's own flag. Forwarding `--formatter` only when it was given is what
@@ -1225,7 +1232,7 @@ async function determineNoneOptions(
       preset,
       js,
       appName,
-      ...(parsedArgs.formatter ? { formatter: parsedArgs.formatter } : {}),
+      ...(formatter ? { formatter } : {}),
       ...(linter ? { linter } : {}),
     };
   }
