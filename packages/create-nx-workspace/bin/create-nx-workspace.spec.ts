@@ -370,7 +370,10 @@ describe('determinePresetOptions', () => {
     // A sentinel the prompt could not produce by accident, so what these tests
     // pin is the threading through each stack rather than the prompt's own
     // default.
-    (enquirer.prompt as jest.Mock).mockResolvedValue({ linter: 'oxlint' });
+    (enquirer.prompt as jest.Mock).mockResolvedValue({
+      linter: 'oxlint',
+      formatter: 'oxfmt',
+    });
   });
 
   // Every stack must come back with the resolved linter. Once the schemas
@@ -379,6 +382,7 @@ describe('determinePresetOptions', () => {
   // Each stack needs enough non-interactive args to reach its return statement.
   const perStack: Record<string, Record<string, unknown>> = {
     none: { preset: Preset.TsStandalone },
+    web: { preset: Preset.WebComponents },
     react: {
       preset: Preset.ReactMonorepo,
       appName: 'app',
@@ -434,6 +438,37 @@ describe('determinePresetOptions', () => {
       } as any);
 
       expect(result.linter).toBe('oxlint');
+    }
+  );
+
+  it.each(Object.keys(perStack))(
+    'should thread the resolved formatter through the %s stack',
+    async (stack) => {
+      const result = await determinePresetOptions({
+        ...base,
+        stack,
+        ...perStack[stack],
+      } as any);
+
+      expect(result.formatter).toBe('oxfmt');
+    }
+  );
+
+  // `--no-workspaces` is the case the formatter used to answer for the user:
+  // it took a hardcoded `prettier` while the linter was already asked. Pinning
+  // both here is what stops that gate coming back.
+  it.each(Object.keys(perStack))(
+    'should thread linter and formatter through the %s stack without workspaces',
+    async (stack) => {
+      const result = await determinePresetOptions({
+        ...base,
+        workspaces: false,
+        stack,
+        ...perStack[stack],
+      } as any);
+
+      expect(result.linter).toBe('oxlint');
+      expect(result.formatter).toBe('oxfmt');
     }
   );
 

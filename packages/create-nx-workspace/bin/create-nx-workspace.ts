@@ -1134,13 +1134,16 @@ export async function determinePresetOptions(
 
 /**
  * `web-components` prompts for nothing of its own — `style` and `e2eTestRunner`
- * come from the CLI or fall back downstream — but the preset does generate a
- * lintable app, so it still needs a linter.
+ * come from the CLI or fall back downstream — but the preset does generate an
+ * app that is both linted and formatted, so it needs both answers.
  */
 async function determineWebOptions(
   parsedArgs: yargs.Arguments<WebArguments>
 ): Promise<Partial<WebArguments>> {
-  return { linter: await determineLinterOptions(parsedArgs) };
+  return {
+    linter: await determineLinterOptions(parsedArgs),
+    formatter: await determineFormatterOptions(parsedArgs),
+  };
 }
 
 async function determineNoneOptions(
@@ -1254,7 +1257,6 @@ async function determineReactOptions(
   let nextAppDir = false;
   let nextSrcDir = false;
   let linter: undefined | Linter;
-  let formatter: undefined | Formatter;
 
   const workspaces = parsedArgs.workspaces;
 
@@ -1380,7 +1382,7 @@ async function determineReactOptions(
   // Asked outside the gate, like the linter above: which formatter you want is
   // independent of package-manager workspaces, and `--no-workspaces` used to
   // force prettier without asking.
-  formatter = await determineFormatterOptions(parsedArgs);
+  const formatter = await determineFormatterOptions(parsedArgs);
 
   return {
     preset,
@@ -1408,7 +1410,6 @@ async function determineVueOptions(
   let unitTestRunner: undefined | 'none' | 'vitest' = undefined;
   let e2eTestRunner: undefined | 'none' | 'cypress' | 'playwright' = undefined;
   let linter: undefined | Linter;
-  let formatter: undefined | Formatter;
 
   const workspaces = parsedArgs.workspaces;
 
@@ -1489,7 +1490,7 @@ async function determineVueOptions(
   // Asked outside the gate, like the linter above: which formatter you want is
   // independent of package-manager workspaces, and `--no-workspaces` used to
   // force prettier without asking.
-  formatter = await determineFormatterOptions(parsedArgs);
+  const formatter = await determineFormatterOptions(parsedArgs);
 
   return {
     preset,
@@ -1513,7 +1514,6 @@ async function determineAngularOptions(
   let e2eTestRunner: undefined | 'none' | 'cypress' | 'playwright' = undefined;
   let bundler: undefined | 'webpack' | 'rspack' | 'esbuild' = undefined;
   let ssr: undefined | boolean = undefined;
-  let formatter: undefined | Formatter;
 
   const standaloneApi = parsedArgs.standaloneApi;
   const routing = parsedArgs.routing;
@@ -1695,7 +1695,7 @@ async function determineAngularOptions(
   // Asked outside the gate, like the linter above: which formatter you want is
   // independent of package-manager workspaces, and `--no-workspaces` used to
   // force prettier without asking.
-  formatter = await determineFormatterOptions(parsedArgs);
+  const formatter = await determineFormatterOptions(parsedArgs);
 
   return {
     preset,
@@ -1723,7 +1723,6 @@ async function determineNodeOptions(
   let framework: 'express' | 'fastify' | 'koa' | 'nest' | 'none';
   let docker: boolean;
   let linter: undefined | Linter;
-  let formatter: undefined | Formatter;
   let unitTestRunner: undefined | 'none' | 'jest' = undefined;
   const workspaces = parsedArgs.workspaces;
 
@@ -1794,7 +1793,7 @@ async function determineNodeOptions(
   // Asked outside the gate, like the linter above: which formatter you want is
   // independent of package-manager workspaces, and `--no-workspaces` used to
   // force prettier without asking.
-  formatter = await determineFormatterOptions(parsedArgs);
+  const formatter = await determineFormatterOptions(parsedArgs);
 
   return {
     preset,
