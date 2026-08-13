@@ -95,6 +95,22 @@ Parse out:
 
 - `title`, `author.login`, `headRefOid` (the head SHA), `headRefName`, `baseRefName`, `url`
 - `isDraft` — if true, exit early (don't review drafts)
+- **Unpushed-work check — do this before Step 3, every time.** `headRefOid` is what the container
+  fetches, so anything committed locally but not pushed is invisible to the entire review. When the
+  session has a local clone of the PR branch checked out, compare it:
+
+  ```bash
+  git -C "$NX_REPO_PATH" rev-parse HEAD          # local
+  # vs headRefOid from the JSON above
+  ```
+
+  If they differ and local is _ahead_, stop and say so rather than reviewing: the run would cover
+  everything except the work it was called for, and would report clean on code nobody looked at.
+  Push (or ask the user to) and re-fetch the metadata. Note the API lags a successful push by a few
+  seconds — poll `headRefOid` until it matches instead of trusting the first read. If local is
+  _behind_ or on another branch, that is normal and not a problem: the container fetches from the
+  remote either way.
+
 - **Local dedup:** if `$TRIAGE_DIR/<NUMBER>.md` exists, its frontmatter `head_sha` equals `headRefOid`, its `pipeline_version` equals the current `PIPELINE_VERSION` (see below), and its `verdict` is not `failed`, this PR was already reviewed at this commit — exit with no draft change; log "ALREADY_REVIEWED". A `failed` draft never blocks a retry. To deliberately re-review an unchanged PR, delete the draft file or just say so in the session.
 - **`PIPELINE_VERSION: 7`** — the current review-criteria generation. A draft whose frontmatter has an older `pipeline_version` (or none) was produced by a weaker pipeline: re-review even at an unchanged `head_sha`, treating the old draft as a prior review (Step 4). Bump this constant whenever the review criteria change materially (new agents, new calibrations, new required sections) so stale drafts age out instead of being pinned forever by the SHA dedup.
 
@@ -195,28 +211,42 @@ docker exec -i "$CONTAINER" bash -lc \
 # The PATH export is required, exactly as in every other docker exec here: `bash -lc` does not put
 # the mise shims on PATH by itself, so without it `pnpm` is not found and this reports FAILED for a
 # reason that has nothing to do with the PR.
-docker exec "$CONTAINER" bash -lc '
-  export PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
-  prepare_worktree() {
-    dir="$1"
-    label="$2"
-    log="/tmp/install-$label.log"
-    cd "$dir"
-    if mise install >"$log" 2>&1 && pnpm install --frozen-lockfile >>"$log" 2>&1; then
-      echo "$label worktree install OK"
-    else
-      echo "$label worktree install FAILED — keep it read-only; do not run tests or repo tooling there"
-      tail -20 "$log"
-      return 1
-    fi
-  }
+# ONE `docker exec` PER WORKTREE. Do not fold these into a single exec with a
+# helper called twice: measured on a 7.75 GiB Docker VM, both installs inside one
+# exec OOM-kills the whole container (exit 137, container gone, every agent's work
+# with it), while the same two installs at the same `--memory 6g` succeed as
+# separate execs with a 3.8 GiB peak. Within one exec the process tree persists,
+# so the first install's page cache and the second's working set accumulate
+# against the cgroup before the kernel reclaims. Raising `--memory` is the wrong
+# fix and makes it worse: Docker sets `memory.swap.max` equal to `--memory`, so at
+# 6g the container already believes it can address 12 GiB the VM cannot back.
+install_worktree() {   # run on the HOST, one docker exec per call
+  dir="$1"; label="$2"
+  docker exec "$CONTAINER" bash -lc '
+    export PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
+    cd '"$dir"' || exit 1
+    mise install >/tmp/install-'"$label"'.log 2>&1 &&
+      pnpm install --frozen-lockfile >>/tmp/install-'"$label"'.log 2>&1
+  '
+  rc=$?
+  if [ "$rc" -eq 0 ]; then
+    echo "$label worktree install OK"
+  elif [ "$rc" -eq 137 ]; then
+    # 137 is SIGKILL. Say so explicitly: the tail below will be misleading or
+    # empty, and the container may already be gone.
+    echo "$label worktree install OOM-KILLED (exit 137) — the container hit its memory cap"
+  else
+    echo "$label worktree install FAILED (exit $rc) — keep it read-only; do not run tests or repo tooling there"
+    docker exec "$CONTAINER" tail -20 "/tmp/install-$label.log" 2>/dev/null
+  fi
+  return $rc
+}
 
-  head_install=OK
-  base_install=OK
-  prepare_worktree /work/nx head || head_install=FAILED
-  prepare_worktree /work/base base || base_install=FAILED
-  echo "HEAD_INSTALL=$head_install BASE_INSTALL=$base_install"
-'
+head_install=OK
+base_install=OK
+install_worktree /work/nx head   || head_install=FAILED
+install_worktree /work/base base || base_install=FAILED
+echo "HEAD_INSTALL=$head_install BASE_INSTALL=$base_install"
 ```
 
 This is the slowest step in the skill, but the image ships a warm pnpm store, so both installs mostly link rather than download. It buys correctness as much as speed: deterministic, prepared comparison trees at the versions each ref pins. Do not skip either setup, even for docs-only changes: every worktree created by this skill must run `mise install` and `pnpm install --frozen-lockfile`.
