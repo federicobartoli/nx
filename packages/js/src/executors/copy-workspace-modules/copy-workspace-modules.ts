@@ -17,7 +17,10 @@ import {
 } from 'node:fs';
 import { dirname, join, relative, sep } from 'path';
 import { lstatSync } from 'fs';
-import { getWorkspacePackagesFromGraph } from '@nx/devkit/internal';
+import {
+  getWorkspacePackagesFromGraph,
+  resolveWorkspaceDependencyTarget,
+} from '@nx/devkit/internal';
 import { stripGlobToBaseDir } from '../../utils/strip-glob-to-base-dir';
 
 export default async function copyWorkspaceModules(
@@ -109,11 +112,16 @@ function handleWorkspaceModules(
       for (const [depName, depVersion] of Object.entries(
         copiedPackageJson.dependencies
       )) {
-        if (workspaceModules.has(depName)) {
-          const relativePath = calculateRelativePath(pkgName, depName);
+        const target = resolveWorkspaceDependencyTarget(
+          depName,
+          depVersion,
+          workspaceModules
+        );
+        if (target) {
+          const relativePath = calculateRelativePath(pkgName, target);
           copiedPackageJson.dependencies[depName] = `file:${relativePath}`;
           packageJsonModified = true;
-          processModule(depName);
+          processModule(target);
         }
       }
 
@@ -130,8 +138,17 @@ function handleWorkspaceModules(
   }
 
   // Process all top-level dependencies
-  for (const [pkgName] of Object.entries(packageJson.dependencies)) {
-    processModule(pkgName);
+  for (const [pkgName, pkgVersion] of Object.entries(
+    packageJson.dependencies
+  )) {
+    const target = resolveWorkspaceDependencyTarget(
+      pkgName,
+      pkgVersion,
+      workspaceModules
+    );
+    if (target) {
+      processModule(target);
+    }
   }
 }
 

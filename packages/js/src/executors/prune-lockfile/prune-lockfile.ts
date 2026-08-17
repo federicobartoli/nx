@@ -16,7 +16,10 @@ import {
   type PackageJsonDependencySection,
 } from '@nx/devkit/internal';
 import { getLockFileName, createLockFile } from '@nx/devkit/internal';
-import { getWorkspacePackagesFromGraph } from '@nx/devkit/internal';
+import {
+  getWorkspacePackagesFromGraph,
+  resolveWorkspaceDependencyTarget,
+} from '@nx/devkit/internal';
 import { type PruneLockfileOptions } from './schema';
 import { stripGlobToBaseDir } from '../../utils/strip-glob-to-base-dir';
 
@@ -67,7 +70,15 @@ function createPrunedLockfile(packageJson: PackageJson, graph: ProjectGraph) {
   for (const [pkgName, pkgVersion] of Object.entries(
     packageJson.dependencies ?? {}
   )) {
-    if (
+    const target = resolveWorkspaceDependencyTarget(
+      pkgName,
+      pkgVersion,
+      workspacePackages
+    );
+    if (target !== null && target !== pkgName) {
+      // aliased entry: keep the alias key, point it at the target's module dir
+      packageJson.dependencies[pkgName] = `file:./workspace_modules/${target}`;
+    } else if (
       pkgVersion.startsWith('workspace:') ||
       pkgVersion.startsWith('file:') ||
       pkgVersion.startsWith('link:') ||
